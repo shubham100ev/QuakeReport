@@ -25,7 +25,9 @@ import java.util.Date;
 
 public class MainActivity extends AppCompatActivity {
 
-//    public static final String LOG_TAG = MainActivity.class.getName();
+    public static final String LOG_TAG = MainActivity.class.getName();
+
+    private static String USGS_REQUEST_URL = "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2014-01-01&endtime=2014-12-01&minmagnitude=7";
 
 
     @RequiresApi(api = Build.VERSION_CODES.O)
@@ -475,7 +477,7 @@ public class MainActivity extends AppCompatActivity {
 
                 long time = Long.parseLong(jsonObject.optString("time"));
 
-                String url=jsonObject.optString("url");
+                String url = jsonObject.optString("url");
 
                 Date date = new java.util.Date(time);
                 SimpleDateFormat sdf = new java.text.SimpleDateFormat("DD-MM-YYYY");
@@ -487,9 +489,9 @@ public class MainActivity extends AppCompatActivity {
                 String t = sdf.format(date);
 
                 if (place.length < 2)
-                    earthquakes.add(new Earthquake(mag, "", place[place.length - 1], d, t,url));
+                    earthquakes.add(new Earthquake(mag, "", place[place.length - 1], d, t, url));
                 else
-                    earthquakes.add(new Earthquake(mag, place[0], place[place.length - 1], d, t,url));
+                    earthquakes.add(new Earthquake(mag, place[0], place[place.length - 1], d, t, url));
 
             }
 
@@ -502,8 +504,8 @@ public class MainActivity extends AppCompatActivity {
             earthquakeListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                    Earthquake earthquake=earthquakes.get(position);
-                    Intent intent=new Intent(Intent.ACTION_VIEW).setData(Uri.parse(earthquake.getLink()));
+                    Earthquake earthquake = earthquakes.get(position);
+                    Intent intent = new Intent(Intent.ACTION_VIEW).setData(Uri.parse(earthquake.getLink()));
                     startActivity(intent);
                 }
             });
