@@ -1,17 +1,29 @@
 package com.example.quakereport;
 
+import android.accessibilityservice.AccessibilityService;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.annotation.RequiresApi;
+import android.support.v4.content.AsyncTaskLoader;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -30,11 +42,13 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import static android.net.wifi.WifiConfiguration.Status.strings;
+
 public class MainActivity extends AppCompatActivity {
 
     public static final String LOG_TAG = MainActivity.class.getName();
 
-    private static String USGS_REQUEST_URL = "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&eventtype=earthquake&orderby=time&minmag=6&limit=10";
+    private static final String USGS_REQUEST_URL = "https://earthquake.usgs.gov/fdsnws/event/1/query";
 
     private EarthquakeAdapter mAdapter;
 
@@ -44,27 +58,63 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+//        AccessibilityService context = null;
+//        ConnectivityManager connectivityManager = ((ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE));
+//        if(connectivityManager.getActiveNetworkInfo() != null && connectivityManager.getActiveNetworkInfo().isConnected())
+//        {
+//            Toast.makeText(MainActivity.this,"NO Internet Connection",Toast.LENGTH_SHORT).show();
+//        }
+
+        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+        String minMagnitude = sharedPrefs.getString(getString(R.string.settings_min_magnitude_key), getString(R.string.settings_min_magnitude_default));
+        String orderBy = sharedPrefs.getString(getString(R.string.settings_order_by_key), getString(R.string.settings_order_by_default));
+        String USGS_REQUEST_URL_ADD = "?format=geojson&eventtype=earthquake&orderby="+orderBy+"&minmag=" + minMagnitude + "&limit=20";
+//        Uri baseUri = Uri.parse(USGS_REQUEST_URL);
+//        Uri.Builder uriBuilder = baseUri.buildUpon();
+//
+//        uriBuilder.appendQueryParameter("format", "geojson");
+//        uriBuilder.appendQueryParameter("limit", "10");
+//        uriBuilder.appendQueryParameter("minmag", minMagnitude);
+//        uriBuilder.appendQueryParameter("orderby", "time");
+
+
         ListView earthquakeListView = findViewById(R.id.list);
-        EarthquakeAsyncTask task=new EarthquakeAsyncTask();
-        task.execute(USGS_REQUEST_URL);
+        EarthquakeAsyncTask task = new EarthquakeAsyncTask();
+        task.execute(USGS_REQUEST_URL + USGS_REQUEST_URL_ADD);
         mAdapter = new EarthquakeAdapter(this, new ArrayList<Earthquake>());
         earthquakeListView.setAdapter(mAdapter);
 
 
-            earthquakeListView.setAdapter(mAdapter);
+        earthquakeListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                Earthquake earthquake = mAdapter.getItem(position);
+                Intent intent = new Intent(Intent.ACTION_VIEW).setData(Uri.parse(earthquake.getLink()));
+                startActivity(intent);
+            }
+        });
+    }
 
-            earthquakeListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                    Earthquake earthquake = mAdapter.getItem(position);
-                    Intent intent = new Intent(Intent.ACTION_VIEW).setData(Uri.parse(earthquake.getLink()));
-                    startActivity(intent);
-                }
-            });
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.action_settings) {
+            Intent settingsIntent = new Intent(this, SettingActivity.class);
+            startActivity(settingsIntent);
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     private class EarthquakeAsyncTask extends AsyncTask<String, Void, List<Earthquake>> {
 
+        @Nullable
         @Override
         protected List<Earthquake> doInBackground(String... strings) {
             URL url = createUrl(strings[0]);
@@ -81,12 +131,14 @@ public class MainActivity extends AppCompatActivity {
             return extractFeatureFromJson(jsonResponse);
         }
 
+
         @Override
         protected void onPostExecute(List<Earthquake> data) {
             mAdapter.clear();
             if (data != null && !data.isEmpty()) {
                 mAdapter.addAll(data);
-            }        }
+            }
+        }
 
         private URL createUrl(String stringUrl) {
             URL url = null;
@@ -204,5 +256,28 @@ public class MainActivity extends AppCompatActivity {
             // Return the list of earthquakes
             return earthquakes;
         }
+
+
     }
+
+//    public class EarthquakeLoader extends AsyncTaskLoader<List<Earthquake>> {
+//
+//        private final String LOG_TAG = EarthquakeLoader.class.getName();
+//        private String mUrl;
+//
+//        public EarthquakeLoader(@NonNull Context context,String url) {
+//            super(context);
+//            mUrl=url;
+//        }
+//
+//
+//        @Nullable
+//        @Override
+//        public List<Earthquake> loadInBackground() {
+//            if(mUrl==null)
+//                return null;
+//            List<Earthquake> earthquakes = QueryUtils.fetchEarthquakeData(mUrl);
+//            return earthquakes;
+//        }
+//    }
 }
